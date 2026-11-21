@@ -11,11 +11,11 @@ CivicResolve is an intelligent civic engagement platform designed to streamline 
 ## 🏛️ Architecture & Tech Stack
 
 - **Frontend**: React 19, Vite, Lucide Icons, Leaflet & Recharts (Deployed on Vercel Edge)
-- **Backend**: Python 3.9+, FastAPI deployed as a **Vercel Python Serverless Function** (`api/index.py`)
+- **Backend**: Python 3.12, FastAPI deployed as a separate **Render web service**
 - **Database**: **Neon PostgreSQL** (via SQLAlchemy ORM with serverless connection pooling)
 - **AI Engine**: Google Gemini API (`gemini-2.5-flash` via official `google-genai` SDK) with heuristic fallback
 - **Authentication**: Firebase Authentication (Google Sign-In & Citizen Phone OTP) with server-side token validation
-- **Deployment**: **100% Vercel Serverless**. Render is no longer required.
+- **Deployment**: React/Vite frontend on Vercel; FastAPI backend on Render.
 
 ---
 
@@ -111,20 +111,29 @@ The script will:
 
 ---
 
-## ⚡ Vercel Deployment Instructions
+## ⚡ Production Deployment Instructions
 
-CivicResolve is architected to deploy entirely to Vercel as a unified application.
+CivicResolve uses a split production architecture: Vercel serves only the
+compiled Vite frontend, while Render runs FastAPI and connects to Neon.
 
 ### Step 1: Push Code to GitHub
-Ensure all code (including `api/index.py`, `vercel.json`, and `requirements.txt`) is committed and pushed to your GitHub repository.
+Ensure `vercel.json`, `.vercelignore`, `frontend/`, `render.yaml`, and the backend
+source are committed and pushed.
 
 ### Step 2: Import into Vercel
 1. Log in to [Vercel](https://vercel.com/) and click **Add New &rarr; Project**.
 2. Select your `CivicResolve` repository.
-3. Leave **Root Directory** as `.` (repository root).
-4. Vercel automatically detects the build configuration from `vercel.json`:
-   - `api/index.py` &rarr; Built as a Python Serverless Function (`@vercel/python`).
-   - `frontend/package.json` &rarr; Built as a Static Single Page App (`dist/`).
+3. Set **Root Directory** to `.` (repository root).
+4. Use the checked-in `vercel.json`:
+   - Install command: `cd frontend && npm ci`
+   - Build command: `cd frontend && npm run build`
+   - Output directory: `frontend/dist`
+   - Framework preset: Vite
+5. Set `VITE_API_URL=https://civicresolve-api-66sx.onrender.com` and the Firebase
+   web configuration variables in Vercel.
+
+The root `.vercelignore` excludes all backend and Python dependency files from
+Vercel. Configure and deploy the Render API separately using `render.yaml`.
 
 ### Step 3: Configure Environment Variables in Vercel
 In **Project Settings &rarr; Environment Variables**, configure the following:
@@ -142,7 +151,7 @@ In **Project Settings &rarr; Environment Variables**, configure the following:
 #### Frontend Variables:
 | Variable Name | Example Value | Description |
 | :--- | :--- | :--- |
-| `VITE_API_URL` | *(Leave empty for unified deployment)* | In unified deployment, `/api` is same-origin. If deploying frontend separately, set to backend domain |
+| `VITE_API_URL` | `https://civicresolve-api-66sx.onrender.com` | Render backend origin |
 | `VITE_FIREBASE_API_KEY` | `AIzaSy...` | Firebase Web API Key |
 | `VITE_FIREBASE_AUTH_DOMAIN` | `civicresolve-4f39e.firebaseapp.com` | Firebase Auth Domain |
 | `VITE_FIREBASE_PROJECT_ID` | `civicresolve-4f39e` | Firebase Project ID |

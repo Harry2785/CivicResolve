@@ -28,10 +28,12 @@ frontend variables.
 
 ## Vercel
 
-Either set **Root Directory** to `frontend` (build `npm run build`, output
-`dist`) or deploy from the repository root using the checked-in `vercel.json`.
-Both configurations deploy only `frontend/dist`; FastAPI remains on Render.
-Use Node 24.x for the installed Firebase SDK.
+Set **Root Directory** to `.` (the repository root). The checked-in root
+`vercel.json` forces the Vite framework, runs `npm ci` and `npm run build`
+inside `frontend`, and publishes only `frontend/dist`. `.vercelignore` excludes
+the FastAPI source and Python dependency manifests from the Vercel upload, so
+Python is not detected or installed. FastAPI remains on Render. Use Node 24.x
+for the installed Firebase SDK.
 
 The repository's `frontend/.env.production` sets:
 

@@ -1,0 +1,7 @@
+# Vercel hosts only the React/Vite frontend. FastAPI runs on Render.
+backend/
+api/
+requirements.txt
+.python-version
+migrate_sqlite_to_postgres.py
+render.yaml
