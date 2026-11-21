@@ -173,24 +173,6 @@ export default function DepartmentAnalytics({ getAuthHeaders }) {
     }))
   }, [trendsData])
 
-  // Custom Dark Theme Tooltip for Recharts
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="analytics-custom-tooltip">
-          <p className="tooltip-title">{label}</p>
-          {payload.map((entry, index) => (
-            <p key={`item-${index}`} className="tooltip-item" style={{ color: entry.color || '#38bdf8' }}>
-              <span className="tooltip-label">{entry.name}:</span>{' '}
-              <span className="tooltip-value">{entry.value}</span>
-            </p>
-          ))}
-        </div>
-      )
-    }
-    return null
-  }
-
   return (
     <div className="analytics-dashboard-container">
       {/* Analytics Command Header */}
