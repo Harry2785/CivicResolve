@@ -31,10 +31,10 @@ def get_unverified_payload(token: str) -> Dict[str, Any]:
     return {}
 
 
-def ensure_firebase_admin_initialized(project_id: Optional[str] = None):
-    """Lazily and safely initialize Firebase Admin SDK with project ID."""
+def ensure_firebase_admin_initialized():
+    """Lazily initialize Firebase Admin SDK for the configured project only."""
     global _firebase_admin_initialized
-    target_pid = project_id or settings.firebase_project_id
+    target_pid = settings.firebase_project_id
 
     if firebase_admin._apps:
         try:
@@ -67,10 +67,9 @@ def decode_and_verify_token(token: str) -> Dict[str, Any]:
     1. Automated unit test tokens (test-admin:<email>)
     2. Official Firebase Admin SDK verify_id_token
     3. Google Auth public key verify_firebase_token
-    4. Development token payload verification
     """
     # 1. Check for test/mock tokens in allowed test environments
-    if settings.ALLOW_TEST_AUTH:
+    if settings.ALLOW_TEST_AUTH and settings.ENVIRONMENT.lower() not in ("production", "prod"):
         if token.startswith("test-admin:") or token == "mock-admin-token":
             email = token.split("test-admin:")[1] if "test-admin:" in token else "admin@civicresolve.gov.in"
             return {
@@ -90,10 +89,23 @@ def decode_and_verify_token(token: str) -> Dict[str, Any]:
                 "auth_time": 1700000000,
             }
 
-    # 2. Extract payload to detect project ID
+    # 2. Pin verification to the configured Firebase project. The token payload
+    # is untrusted until signature verification and must never choose the audience.
     payload = get_unverified_payload(token)
-    token_project_id = payload.get("aud") or settings.firebase_project_id
-    ensure_firebase_admin_initialized(token_project_id)
+    configured_project_id = settings.firebase_project_id
+    if payload.get("aud") != configured_project_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token audience.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if payload.get("iss") != f"https://securetoken.google.com/{configured_project_id}":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token issuer.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    ensure_firebase_admin_initialized()
 
     # 3. Live verification using Firebase Admin SDK
     has_service_account = bool(settings.FIREBASE_CREDENTIALS_PATH and Path(settings.FIREBASE_CREDENTIALS_PATH).exists())
@@ -101,21 +113,18 @@ def decode_and_verify_token(token: str) -> Dict[str, Any]:
         decoded = firebase_auth.verify_id_token(token, check_revoked=has_service_account)
         return decoded
     except Exception as e1:
-        logger.info(f"Firebase Admin verify_id_token note: {e1}. Trying Google OAuth verification...")
+        logger.info("Firebase Admin verification failed; trying public certificate verification.")
 
     # 4. Fallback verification using Google's public certificates directly
     try:
         req = google_requests.Request()
-        decoded = google_id_token.verify_firebase_token(token, req, audience=token_project_id)
+        decoded = google_id_token.verify_firebase_token(token, req, audience=configured_project_id)
         if decoded:
+            # Google's verifier returns the JWT subject; Firebase Admin also adds uid.
+            decoded["uid"] = decoded["sub"]
             return decoded
     except Exception as e2:
-        logger.info(f"Google id_token.verify_firebase_token note: {e2}")
-
-    # 5. Development environment fallback if token is signed by Google Firebase and has email
-    if settings.ALLOW_TEST_AUTH and payload.get("email") and payload.get("iss", "").startswith("https://securetoken.google.com/"):
-        logger.info(f"Development token accepted for email: {payload.get('email')}")
-        return payload
+        logger.info("Public certificate token verification failed.")
 
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -143,9 +152,7 @@ async def get_current_user(
     return claims
 
 
-async def require_admin(
-    current_user: Dict[str, Any] = Depends(get_current_user)
-) -> Dict[str, Any]:
+def authorize_admin_claims(current_user: Dict[str, Any]) -> Dict[str, Any]:
     """
     Strict server-side administrator authorization dependency.
     
@@ -162,6 +169,13 @@ async def require_admin(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access Denied: Authenticated account does not possess a verified email address."
+        )
+
+    if current_user.get("email_verified") is not True:
+        logger.warning("Rejecting admin request because the token email is not verified.")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access Denied: Administrator email must be verified."
         )
 
     normalized_email = email.strip().lower()
@@ -186,6 +200,21 @@ async def require_admin(
         "name": current_user.get("name") or normalized_email,
         "role": "admin"
     }
+
+
+async def require_admin(
+    current_user: Dict[str, Any] = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """Require a verified, allowlisted administrator identity."""
+    return authorize_admin_claims(current_user)
+
+
+def is_authorized_admin(current_user: Dict[str, Any]) -> bool:
+    """Use the same verified-email policy for administrator read access."""
+    return (
+        current_user.get("email_verified") is True
+        and (current_user.get("email") or "").strip().lower() in settings.admin_emails
+    )
 
 
 async def optional_authenticated_user(

@@ -21,7 +21,7 @@ from app.services.ai_service import analyze_complaint
 from app.services.duplicate_service import find_nearby_candidates, evaluate_potential_duplicate
 from app.services.image_service import validate_and_save_image
 from app.core.config import settings
-from app.core.auth import require_admin, get_current_user, optional_authenticated_user
+from app.core.auth import require_admin, get_current_user, optional_authenticated_user, is_authorized_admin
 from app.core.constants import (
     ALLOWED_CATEGORIES,
     PRIORITY_LEVELS,
@@ -341,7 +341,7 @@ def list_issues(
 
     # 2. Authenticated user: check administrator status
     user_email = (current_user.get("email") or "").strip().lower()
-    is_admin = bool(user_email and user_email in settings.admin_emails)
+    is_admin = is_authorized_admin(current_user)
 
     query = db.query(Issue)
     if not is_admin:
@@ -477,7 +477,7 @@ def get_issue(
         )
 
     user_email = (current_user.get("email") or "").strip().lower()
-    is_admin = bool(user_email and user_email in settings.admin_emails)
+    is_admin = is_authorized_admin(current_user)
 
     # Ownership check: must match owner UID or be verified admin
     if not is_admin and issue.citizen_uid != current_user.get("uid"):

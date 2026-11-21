@@ -61,10 +61,15 @@ class Settings:
     def DATABASE_URL(self) -> str:
         env_url = (os.getenv("DATABASE_URL") or "").strip()
         if env_url:
-            # Normalize postgres:// to postgresql:// for SQLAlchemy compatibility (Neon / Vercel format)
-            if env_url.startswith("postgres://"):
-                env_url = "postgresql://" + env_url[len("postgres://"):]
+            # Always select the psycopg2 driver installed in both requirements files.
+            for prefix in ("postgres://", "postgresql://", "postgresql+psycopg://"):
+                if env_url.startswith(prefix):
+                    env_url = "postgresql+psycopg2://" + env_url[len(prefix):]
+                    break
             return env_url
+
+        if self.ENVIRONMENT.lower() in ("production", "prod"):
+            raise RuntimeError("DATABASE_URL is required in production.")
 
         if self.IS_VERCEL:
             # Temporary fallback during initial Vercel setup before DATABASE_URL environment variable is set
@@ -117,8 +122,8 @@ class Settings:
     # Firebase Admin SDK Configuration
     FIREBASE_PROJECT_ID: str = os.getenv("FIREBASE_PROJECT_ID", "")
     FIREBASE_CREDENTIALS_PATH: str = os.getenv("FIREBASE_CREDENTIALS_PATH", "")
-    # Allow mock tokens for automated tests / developer environment when configured
-    ALLOW_TEST_AUTH: bool = os.getenv("ALLOW_TEST_AUTH", "true").lower() in ("true", "1", "yes")
+    # Mock tokens are opt-in for automated tests only and must never default on.
+    ALLOW_TEST_AUTH: bool = os.getenv("ALLOW_TEST_AUTH", "false").lower() in ("true", "1", "yes")
 
     @property
     def firebase_project_id(self) -> str:
@@ -127,6 +132,9 @@ class Settings:
         """
         if self.FIREBASE_PROJECT_ID:
             return self.FIREBASE_PROJECT_ID.strip()
+
+        if self.ENVIRONMENT.lower() in ("production", "prod"):
+            raise RuntimeError("FIREBASE_PROJECT_ID is required in production.")
         
         env_pid = os.getenv("VITE_FIREBASE_PROJECT_ID") or os.getenv("GOOGLE_CLOUD_PROJECT")
         if env_pid:

@@ -6,7 +6,6 @@ import {
   ArrowRight,
   Loader2,
   ArrowLeft,
-  KeyRound,
   FileCheck2,
   Lock
 } from 'lucide-react'
@@ -20,7 +19,6 @@ export default function AdminLogin({ setCurrentView }) {
     adminError,
     clearError,
     loginAsAdmin,
-    loginWithTestAdmin,
     isConfigured,
     logout
   } = useAuth()
@@ -36,21 +34,6 @@ export default function AdminLogin({ setCurrentView }) {
       setIsSubmitting(true)
       await loginAsAdmin()
       // If authorization succeeds, redirect to the Admin Portal
-      setCurrentView('admin')
-    } catch (err) {
-      setLocalError(err.message || 'Access Denied: Account is not an authorized municipal administrator.')
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  const handleTestAdminLogin = async () => {
-    setLocalError(null)
-    clearError()
-
-    try {
-      setIsSubmitting(true)
-      await loginWithTestAdmin('shrihari0877@gmail.com')
       setCurrentView('admin')
     } catch (err) {
       setLocalError(err.message || 'Access Denied: Account is not an authorized municipal administrator.')
@@ -153,24 +136,6 @@ export default function AdminLogin({ setCurrentView }) {
                   <span>Continue with Official Google Account</span>
                 </>
               )}
-            </button>
-
-            {/* Direct Operational Access for Verified Officials */}
-            <div className="admin-demo-access-divider">
-              <span>OR DIRECT OPERATIONAL ACCESS</span>
-            </div>
-
-            <button
-              type="button"
-              className="btn-official-direct-login"
-              onClick={handleTestAdminLogin}
-              disabled={isSubmitting}
-            >
-              <KeyRound size={17} className="text-amber" />
-              <div className="direct-login-text">
-                <strong>Sign In as Allowlisted Municipal Official</strong>
-                <span className="text-xs text-muted">shrihari0877@gmail.com &middot; Verified via Backend Directory</span>
-              </div>
             </button>
 
             <div className="official-audit-badge">

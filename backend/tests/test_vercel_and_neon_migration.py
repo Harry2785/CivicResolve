@@ -16,13 +16,13 @@ def test_database_url_normalization():
     try:
         # Test 1: postgres:// conversion
         os.environ["DATABASE_URL"] = "postgres://user:secret@ep-cool-fog-1234.us-east-2.aws.neon.tech/neondb?sslmode=require"
-        assert s.DATABASE_URL.startswith("postgresql://")
+        assert s.DATABASE_URL.startswith("postgresql+psycopg2://")
         assert s.is_postgres is True
         assert s.database_type == "PostgreSQL (Neon)"
 
         # Test 2: postgresql:// preserved
         os.environ["DATABASE_URL"] = "postgresql://user:secret@ep-cool-fog-1234.us-east-2.aws.neon.tech/neondb?sslmode=require"
-        assert s.DATABASE_URL.startswith("postgresql://")
+        assert s.DATABASE_URL.startswith("postgresql+psycopg2://")
         assert s.is_postgres is True
 
         # Test 3: empty defaults to SQLite

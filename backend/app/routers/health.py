@@ -1,19 +1,31 @@
 from datetime import datetime, timezone
+import logging
 from typing import Optional
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query, Response
 from app.core.config import settings
+from app.core.auth import authorize_admin_claims, optional_authenticated_user
 from app.database import check_db_health
 
 router = APIRouter(prefix="/health", tags=["Health"])
+logger = logging.getLogger("civicresolve.health")
 
 
 @router.get("")
-def get_health(test_gemini: bool = Query(False, description="Whether to perform a live test ping to Gemini API")):
+def get_health(
+    response: Response,
+    test_gemini: bool = Query(False, description="Whether to perform an administrator-authorized live Gemini test"),
+    current_user: Optional[dict] = Depends(optional_authenticated_user),
+):
     """
     Health check endpoint to verify backend API, database connectivity,
     and Gemini AI operational status.
     """
+    if test_gemini:
+        authorize_admin_claims(current_user or {})
+
     db_ok = check_db_health()
+    if not db_ok:
+        response.status_code = 503
     gemini_ready = bool(settings.GEMINI_API_KEY and settings.GEMINI_API_KEY != "your_gemini_api_key_here")
 
     response_data = {
@@ -45,7 +57,8 @@ def get_health(test_gemini: bool = Query(False, description="Whether to perform 
                 response_data["gemini_responding"] = False
                 response_data["gemini_test_status"] = "Client initialization failed"
         except Exception as e:
+            logger.warning("Gemini health check failed: %s", e)
             response_data["gemini_responding"] = False
-            response_data["gemini_test_status"] = f"Test request failed: {str(e)}"
+            response_data["gemini_test_status"] = "Live check failed"
 
     return response_data

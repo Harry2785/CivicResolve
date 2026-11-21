@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import {
   onAuthStateChanged,
   signInWithPopup,
@@ -49,8 +49,6 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [authError, setAuthError] = useState(null)
-  const isTestSessionRef = useRef(false)
-  
   // Administrator state validated by backend
   const [isAdmin, setIsAdmin] = useState(false)
   const [adminProfile, setAdminProfile] = useState(null)
@@ -133,13 +131,8 @@ export function AuthProvider({ children }) {
     const unsubscribe = onAuthStateChanged(
       auth,
       async (currentUser) => {
-        if (!currentUser && isTestSessionRef.current) {
-          setLoading(false)
-          return
-        }
         setUser(currentUser)
         if (currentUser) {
-          isTestSessionRef.current = false
           // Check backend admin status on login / session restore
           try {
             const token = await currentUser.getIdToken()
@@ -202,27 +195,6 @@ export function AuthProvider({ children }) {
       setAdminError(msg)
       throw new Error(msg)
     }
-  }
-
-  // Allowlisted Municipal Official Access (cryptographically verified against backend ADMIN_EMAILS directory)
-  const loginWithTestAdmin = async (email = 'shrihari0877@gmail.com') => {
-    setAdminError(null)
-    setAuthError(null)
-    isTestSessionRef.current = true
-    const testToken = `test-admin:${email}`
-    const mockUser = {
-      email,
-      displayName: 'Verified Municipal Administrator',
-      getIdToken: async () => testToken
-    }
-
-    const verification = await verifyAdminStatus(testToken)
-    if (!verification.isAuthorized) {
-      isTestSessionRef.current = false
-      throw new Error(verification.error || 'Access Denied: Account is not on the municipal administrator allowlist.')
-    }
-    setUser(mockUser)
-    return mockUser
   }
 
   // Setup reCAPTCHA Verifier for Phone OTP
@@ -293,7 +265,6 @@ export function AuthProvider({ children }) {
 
   // Sign out user
   const logout = async () => {
-    isTestSessionRef.current = false
     setAuthError(null)
     setAdminError(null)
     setIsAdmin(false)
@@ -320,7 +291,6 @@ export function AuthProvider({ children }) {
     },
     loginWithGoogle,
     loginAsAdmin,
-    loginWithTestAdmin,
     sendPhoneOtp,
     verifyPhoneOtp,
     verifyAdminStatus,

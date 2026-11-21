@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getApiUrl, API_BASE_URL } from '../config/api'
+import { useAuth } from '../context/AuthContext'
 import {
   Globe,
   Server,
@@ -13,6 +14,7 @@ import {
 } from 'lucide-react'
 
 export default function SystemDiagnostics() {
+  const { isAdmin, getAuthHeaders } = useAuth()
   const [healthData, setHealthData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [testingGemini, setTestingGemini] = useState(false)
@@ -28,7 +30,8 @@ export default function SystemDiagnostics() {
     setError(null)
     try {
       const endpoint = testGeminiLive ? '/api/health?test_gemini=true' : '/api/health'
-      const response = await fetch(getApiUrl(endpoint))
+      const headers = testGeminiLive ? await getAuthHeaders() : {}
+      const response = await fetch(getApiUrl(endpoint), { headers })
       if (!response.ok) {
         throw new Error(`Server returned HTTP ${response.status} (${response.statusText || 'Error'})`)
       }
@@ -66,7 +69,7 @@ export default function SystemDiagnostics() {
           </button>
           <button
             onClick={() => fetchHealth(true)}
-            disabled={loading || testingGemini || !healthData?.gemini_configured}
+            disabled={loading || testingGemini || !healthData?.gemini_configured || !isAdmin}
             className="btn-secondary"
             title="Send live generation request to Gemini to verify real-time API response"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.55rem 0.9rem', fontSize: '0.85rem' }}

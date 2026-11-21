@@ -22,6 +22,7 @@ export const API_BASE_URL = (
  */
 export function getApiUrl(endpoint = '') {
   if (!endpoint) return API_BASE_URL
+  if (endpoint.startsWith('data:image/')) return endpoint
   if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
     return endpoint
   }
