@@ -1,0 +1,62 @@
+# Node & Frontend dependencies and build outputs
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+dist-ssr/
+*.local
+
+# Virtual environments
+venv/
+.venv/
+env/
+backend/venv/
+backend/.venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+# Python cache & compiled files
+__pycache__/
+*/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# SQLite databases & transient logs
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.db-wal
+backend/*.db
+backend/*.sqlite
+backend/*.sqlite3
+
+# Uploaded images & user media
+uploads/
+*/uploads/
+backend/uploads/
+frontend/public/uploads/
+
+# OS and Editor artifacts
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
