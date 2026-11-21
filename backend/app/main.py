@@ -21,8 +21,11 @@ logger = logging.getLogger("civicresolve")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: ensure SQLite database tables are created
-    init_db()
+    # Startup: ensure SQLite database tables are created safely
+    try:
+        init_db()
+    except Exception as e:
+        logger.warning(f"Database initialization deferred: {e}")
     yield
     # Shutdown logic if needed
 
@@ -34,14 +37,16 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Configure CORS for frontend communication
+# Configure CORS for frontend communication (supports Vercel, Render, local Vite, and custom origins)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
-    allow_origin_regex=r"^https:\/\/.*\.vercel\.app$",
+    allow_origin_regex=r"^https?:\/\/(([a-zA-Z0-9_\-]+\.)*(vercel\.app|onrender\.com)|localhost|127\.0\.0\.1)(:[0-9]+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=600,
 )
 
 @app.middleware("http")
@@ -52,8 +57,16 @@ async def log_requests(request: Request, call_next):
     logger.info(f"{request.method} {request.url.path} -> {response.status_code} ({duration_ms:.1f}ms)")
     return response
 
-# Serve uploaded evidence images statically
-app.mount("/uploads", StaticFiles(directory=str(settings.UPLOAD_DIR)), name="uploads")
+# Serve uploaded evidence images statically (guarantee directory exists safely)
+if not settings.UPLOAD_DIR.exists() and not str(settings.UPLOAD_DIR).startswith("/var/task"):
+    try:
+        settings.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        pass
+
+if settings.UPLOAD_DIR.exists():
+    app.mount("/uploads", StaticFiles(directory=str(settings.UPLOAD_DIR)), name="uploads")
+    app.mount(f"{settings.API_PREFIX}/uploads", StaticFiles(directory=str(settings.UPLOAD_DIR)), name="api_uploads")
 
 # Register API routers
 app.include_router(health.router, prefix=settings.API_PREFIX)

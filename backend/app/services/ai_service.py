@@ -66,7 +66,7 @@ def _get_gemini_client():
         from google import genai
         from google.genai import types
         http_options = types.HttpOptions(
-            timeout=10000,
+            timeout=8000,
             retry_options=types.HttpRetryOptions(attempts=1)
         )
         return genai.Client(api_key=settings.GEMINI_API_KEY, http_options=http_options)
@@ -299,7 +299,14 @@ and explicitly state that AI recommendations are advisory and cannot determine e
             )
 
             if response and response.text:
-                parsed_data = json.loads(response.text)
+                raw_text = response.text.strip()
+                # Strip markdown code fences if present in Gemini output
+                if raw_text.startswith("```"):
+                    parts = raw_text.split("\n", 1)
+                    raw_text = parts[1] if len(parts) > 1 else raw_text
+                    if raw_text.endswith("```"):
+                        raw_text = raw_text.rsplit("```", 1)[0].strip()
+                parsed_data = json.loads(raw_text)
                 result = AIAnalysisResult(**parsed_data)
 
                 # Validation & safety enforcement

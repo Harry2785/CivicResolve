@@ -102,6 +102,10 @@ def validate_and_save_image(
 
     # 5. Unique, non-executable filename generation
     unique_filename = f"{uuid.uuid4().hex}{safe_ext}"
+    try:
+        destination_dir.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        pass
     destination_path = destination_dir / unique_filename
 
     # Save validated bytes to destination

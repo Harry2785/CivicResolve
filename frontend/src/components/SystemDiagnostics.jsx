@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getApiUrl } from '../config/api'
+import { getApiUrl, API_BASE_URL } from '../config/api'
 import {
   Globe,
   Server,
@@ -83,8 +83,8 @@ export default function SystemDiagnostics() {
           <h3 className="card-title">Backend API</h3>
           <p className="card-subtitle">Python 3.9 + FastAPI</p>
           <div className="card-meta">
-            <span className="tag">Port 8000</span>
-            <span className="tag">GET /api/health</span>
+            <span className="tag">{API_BASE_URL ? 'Cloud Host' : 'Port 8000'}</span>
+            <span className="tag" title={getApiUrl('/api/health')}>{API_BASE_URL ? 'Render API' : 'GET /api/health'}</span>
           </div>
           <p className={`card-status ${isHealthy ? 'status-ok' : 'status-err'}`}>
             {isHealthy ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
@@ -128,13 +128,18 @@ export default function SystemDiagnostics() {
       <div className="diagnostics-card">
         <div className="diagnostics-header">
           <h3>Live Diagnostic JSON Payload</h3>
-          <code>GET /api/health</code>
+          <code>{getApiUrl('/api/health')}</code>
         </div>
 
         {error && (
           <div className="error-banner">
             <AlertTriangle size={18} />
-            <span>{error}</span>
+            <div>
+              <span>{error}</span>
+              <div style={{ fontSize: '0.8rem', opacity: 0.85, marginTop: '2px' }}>
+                Attempted target: <code>{getApiUrl('/api/health')}</code>
+              </div>
+            </div>
           </div>
         )}
 

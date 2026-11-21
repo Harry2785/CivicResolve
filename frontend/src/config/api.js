@@ -25,6 +25,15 @@ export function getApiUrl(endpoint = '') {
   if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
     return endpoint
   }
-  const cleanPath = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
+  let cleanPath = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
+  // Prevent duplicate /api if API_BASE_URL already ends with /api
+  if (API_BASE_URL.endsWith('/api') && cleanPath.startsWith('/api/')) {
+    cleanPath = cleanPath.substring(4)
+  }
+  // If endpoint is a static asset mount (/uploads/...) and base URL has /api suffix, route to server root
+  if (cleanPath.startsWith('/uploads/')) {
+    const rootBase = API_BASE_URL.replace(/\/api$/, '')
+    return `${rootBase}${cleanPath}`
+  }
   return `${API_BASE_URL}${cleanPath}`
 }

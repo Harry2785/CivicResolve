@@ -66,8 +66,12 @@ def migrate_db_schema() -> None:
 
 def init_db() -> None:
     """Initialize database tables, apply schema migrations, and seed sample complaints on first creation only."""
-    Base.metadata.create_all(bind=engine)
-    migrate_db_schema()
+    try:
+        Base.metadata.create_all(bind=engine)
+        migrate_db_schema()
+    except Exception as e:
+        import logging
+        logging.getLogger("civicresolve.db").warning(f"Database table initialization notice: {e}")
     try:
         from app.database_seed import seed_demo_complaints_if_empty
         db = SessionLocal()

@@ -32,8 +32,11 @@ class Settings:
     DESCRIPTION: str = "AI-Powered Civic Issue Reporting and Resolution Platform"
     API_PREFIX: str = "/api"
 
-    # Server settings
-    HOST: str = os.getenv("HOST", "127.0.0.1")
+    # Server settings (binds to 0.0.0.0 in cloud/container environments like Render or in production)
+    HOST: str = os.getenv(
+        "HOST",
+        "0.0.0.0" if (os.getenv("RENDER") or os.getenv("PORT") or os.getenv("ENVIRONMENT") == "production") else "127.0.0.1"
+    )
     PORT: int = int(os.getenv("PORT", "8000"))
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     @property
@@ -136,9 +139,12 @@ class Settings:
     def cors_origins(self) -> List[str]:
         raw_origins = os.getenv(
             "CORS_ORIGINS",
-            "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000"
+            "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,https://civicresolve-sqkf.onrender.com"
         )
-        return [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
+        origins = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
+        if "https://civicresolve-sqkf.onrender.com" not in origins:
+            origins.append("https://civicresolve-sqkf.onrender.com")
+        return origins
 
 
 settings = Settings()
