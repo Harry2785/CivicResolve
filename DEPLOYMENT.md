@@ -18,7 +18,7 @@ Set these in Render → Environment:
 | `ALLOW_TEST_AUTH` | `false` (production rejects mock tokens regardless) |
 | `FIREBASE_PROJECT_ID` | Your exact Firebase project ID |
 | `ADMIN_EMAILS` | Existing real administrator allowlist, comma-separated |
-| `CORS_ORIGINS` | Exact HTTPS Vercel production origin, no trailing slash; comma-separate additional trusted origins |
+| `CORS_ORIGINS` | `https://civic-resolve-lt44aca7u-civic-resolve.vercel.app` |
 | `USE_DATA_URL_STORAGE` | `1`; validated images are stored in Neon with their issues |
 | `GEMINI_API_KEY` | Optional server-only key; without it heuristic triage remains available |
 
@@ -28,14 +28,16 @@ frontend variables.
 
 ## Vercel
 
-Set **Root Directory** to `frontend`, **Framework** to Vite, **Build Command**
-to `npm run build`, and **Output Directory** to `dist`. Use Node 24.x for the
-installed Firebase SDK. This intentionally uses `frontend/vercel.json` rather
-than the legacy unified Python/Vercel configuration at the repository root.
+Either set **Root Directory** to `frontend` (build `npm run build`, output
+`dist`) or deploy from the repository root using the checked-in `vercel.json`.
+Both configurations deploy only `frontend/dist`; FastAPI remains on Render.
+Use Node 24.x for the installed Firebase SDK.
 
-Set in Vercel → Settings → Environment Variables:
+The repository's `frontend/.env.production` sets:
 
-- `VITE_API_URL`: the real Render HTTPS service origin, without a trailing slash.
+- `VITE_API_URL=https://civicresolve-api-66sx.onrender.com`
+
+Set the following in Vercel → Settings → Environment Variables:
 - `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`,
   and `VITE_FIREBASE_APP_ID`: your existing Firebase web configuration.
 - Preserve other existing Firebase web configuration variables.
@@ -43,6 +45,11 @@ Set in Vercel → Settings → Environment Variables:
 Redeploy the frontend whenever its build variables change. Add the exact Vercel
 production hostname to Firebase Authentication → Settings → Authorized domains.
 Enable the existing Google/phone providers in Firebase as appropriate.
+
+The supplied Vercel deployment currently returns `Login – Vercel` to an
+unauthenticated request. Disable Vercel Deployment Protection for production or
+assign a public production alias before treating that URL as the Firebase/CORS
+origin.
 
 ## Validation before release
 

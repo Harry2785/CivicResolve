@@ -22,6 +22,6 @@ services:
       - key: ADMIN_EMAILS
         sync: false
       - key: CORS_ORIGINS
-        sync: false
+        value: https://civic-resolve-lt44aca7u-civic-resolve.vercel.app
       - key: GEMINI_API_KEY
         sync: false
