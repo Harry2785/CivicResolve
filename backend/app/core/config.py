@@ -144,8 +144,8 @@ class Settings:
 settings = Settings()
 
 # Ensure uploads directory exists safely without attempting to write inside read-only /var/task
-if not str(settings.UPLOAD_DIR).startswith("/var/task"):
-    if settings.IS_VERCEL:
-        os.makedirs("/tmp/uploads", exist_ok=True)
-    else:
-        settings.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+# Ensure uploads directory exists
+try:
+    settings.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+except OSError:
+    pass
