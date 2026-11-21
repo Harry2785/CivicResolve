@@ -16,6 +16,16 @@ else:
     load_dotenv()  # Fallback to default search
 
 
+def is_vercel_environment() -> bool:
+    """Detect if running inside Vercel's serverless runtime environment."""
+    return bool(
+        os.getenv("VERCEL") == "1"
+        or os.getenv("VERCEL_ENV")
+        or os.getenv("AWS_LAMBDA_FUNCTION_NAME")
+        or str(Path(__file__).resolve()).startswith("/var/task")
+    )
+
+
 class Settings:
     PROJECT_NAME: str = "CivicResolve API"
     VERSION: str = "1.0.0"
@@ -26,16 +36,37 @@ class Settings:
     HOST: str = os.getenv("HOST", "127.0.0.1")
     PORT: int = int(os.getenv("PORT", "8000"))
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
-    IS_VERCEL: bool = os.getenv("VERCEL") == "1" or os.getenv("AWS_LAMBDA_FUNCTION_NAME") is not None
+    @property
+    def IS_VERCEL(self) -> bool:
+        return is_vercel_environment()
 
-    # SQLite Database settings (auto-routes to /tmp when executing inside Vercel serverless runtime)
+    # Upload Directory Configuration:
+    # 1. Configurable via environment variable (UPLOAD_DIR)
+    # 2. On Vercel: Writable temporary directory /tmp/civicresolve/uploads
+    # 3. Outside Vercel: Preserves existing local uploads directory (BASE_DIR / 'uploads')
+    @property
+    def UPLOAD_DIR(self) -> Path:
+        env_upload = os.getenv("UPLOAD_DIR")
+        if env_upload:
+            return Path(env_upload)
+        if self.IS_VERCEL:
+            return Path("/tmp/civicresolve/uploads")
+        return BASE_DIR / "uploads"
+
+    # SQLite Database settings (auto-routes to /tmp/civicresolve/civicresolve.db when executing inside Vercel)
     @property
     def DATABASE_URL(self) -> str:
         env_url = os.getenv("DATABASE_URL")
-        if env_url:
-            return env_url
         if self.IS_VERCEL:
-            tmp_db = Path("/tmp/civicresolve.db")
+            # If user explicitly configured an external database (e.g. PostgreSQL/MySQL) on Vercel, respect it
+            if env_url and not env_url.startswith("sqlite:///.") and "/var/task" not in env_url and "civicresolve.db" not in env_url:
+                return env_url
+            tmp_dir = Path("/tmp/civicresolve")
+            try:
+                tmp_dir.mkdir(parents=True, exist_ok=True)
+            except OSError:
+                pass
+            tmp_db = tmp_dir / "civicresolve.db"
             source_db = BASE_DIR / "civicresolve.db"
             if not tmp_db.exists() and source_db.exists():
                 import shutil
@@ -43,21 +74,16 @@ class Settings:
                     shutil.copy2(source_db, tmp_db)
                 except Exception:
                     pass
-            return f"sqlite:///{tmp_db}"
-        return f"sqlite:///{BASE_DIR / 'civicresolve.db'}"
+            return f"sqlite:///{tmp_db.as_posix()}"
+        if env_url:
+            return env_url
+        return f"sqlite:///{(BASE_DIR / 'civicresolve.db').as_posix()}"
 
     # Gemini AI Configuration
     # Defaults to gemini-2.5-flash as requested, with graceful fallback to gemini-3.8-flash
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
     FALLBACK_GEMINI_MODEL: str = os.getenv("FALLBACK_GEMINI_MODEL", "gemini-3.8-flash")
-
-    # Media & Uploads directory (auto-routes to /tmp/uploads on Vercel serverless)
-    @property
-    def UPLOAD_DIR(self) -> Path:
-        if self.IS_VERCEL:
-            return Path("/tmp/uploads")
-        return BASE_DIR / "uploads"
 
     # Administrator Authentication & Allowlist
     ADMIN_EMAILS_RAW: str = os.getenv(
@@ -117,8 +143,9 @@ class Settings:
 
 settings = Settings()
 
-# Ensure uploads directory exists
-try:
-    settings.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-except OSError:
-    pass
+# Ensure uploads directory exists safely without attempting to write inside read-only /var/task
+if not str(settings.UPLOAD_DIR).startswith("/var/task"):
+    if settings.IS_VERCEL:
+        os.makedirs("/tmp/uploads", exist_ok=True)
+    else:
+        settings.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
