@@ -11,16 +11,15 @@ import uvicorn
 from app.core.config import settings
 
 if __name__ == "__main__":
-    # Render and cloud environments set PORT and require binding to 0.0.0.0
+    # Cloud/container environments set PORT and require binding to 0.0.0.0
     port = int(os.getenv("PORT", str(settings.PORT)))
     is_cloud_or_prod = bool(
-        os.getenv("RENDER")
-        or os.getenv("PORT")
+        os.getenv("PORT")
         or settings.ENVIRONMENT.lower() in ("production", "prod")
     )
     host = os.getenv("HOST", "0.0.0.0" if is_cloud_or_prod else settings.HOST)
 
-    # Disable reload in production and cloud containers to prevent premature container shutdown on Render
+    # Disable reload in production to ensure process stability
     reload_enabled = False if is_cloud_or_prod else (settings.ENVIRONMENT == "development")
 
     print(f"Starting CivicResolve API on {host}:{port} (reload={reload_enabled}, env={settings.ENVIRONMENT})")

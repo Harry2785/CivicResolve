@@ -37,11 +37,11 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Configure CORS for frontend communication (supports Vercel, Render, local Vite, and custom origins)
+# Configure CORS for frontend communication (supports Vercel, local Vite, and custom origins)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
-    allow_origin_regex=r"^https?:\/\/(([a-zA-Z0-9_\-]+\.)*(vercel\.app|onrender\.com)|localhost|127\.0\.0\.1)(:[0-9]+)?$",
+    allow_origin_regex=r"^https?:\/\/(([a-zA-Z0-9_\-]+\.)*vercel\.app|localhost|127\.0\.0\.1)(:[0-9]+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -68,14 +68,21 @@ if settings.UPLOAD_DIR.exists():
     app.mount("/uploads", StaticFiles(directory=str(settings.UPLOAD_DIR)), name="uploads")
     app.mount(f"{settings.API_PREFIX}/uploads", StaticFiles(directory=str(settings.UPLOAD_DIR)), name="api_uploads")
 
-# Register API routers
+# Register API routers with /api prefix
 app.include_router(health.router, prefix=settings.API_PREFIX)
 app.include_router(issues.router, prefix=settings.API_PREFIX)
 app.include_router(admin.router, prefix=settings.API_PREFIX)
 app.include_router(analytics.router, prefix=settings.API_PREFIX)
 
+# Also mount without /api prefix for environments where proxy rewrites strip the prefix
+app.include_router(health.router)
+app.include_router(issues.router)
+app.include_router(admin.router)
+app.include_router(analytics.router)
+
 # Direct /api/stats route alias for admin dashboards
 @app.get(f"{settings.API_PREFIX}/stats", tags=["Statistics"])
+@app.get("/stats", tags=["Statistics"])
 def get_stats_direct(
     db = Depends(get_db),
     admin_user: dict = Depends(require_admin)
@@ -88,11 +95,16 @@ def get_stats_direct(
     return _calculate_stats_summary(db=db)
 
 
+@app.get("/api/index.py", tags=["Root"])
+@app.get("/index.py", tags=["Root"])
+@app.get(f"{settings.API_PREFIX}", tags=["Root"])
 @app.get("/", tags=["Root"])
 def root():
     return {
         "message": "Welcome to CivicResolve API",
         "version": settings.VERSION,
+        "runtime": "Vercel Serverless" if settings.IS_VERCEL else "ASGI Server",
+        "database": settings.database_type,
         "docs_url": "/docs",
         "health_check": f"{settings.API_PREFIX}/health",
         "issues_endpoint": f"{settings.API_PREFIX}/issues"

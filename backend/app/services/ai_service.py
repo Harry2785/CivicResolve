@@ -66,7 +66,7 @@ def _get_gemini_client():
         from google import genai
         from google.genai import types
         http_options = types.HttpOptions(
-            timeout=8000,
+            timeout=10000,
             retry_options=types.HttpRetryOptions(attempts=1)
         )
         return genai.Client(api_key=settings.GEMINI_API_KEY, http_options=http_options)

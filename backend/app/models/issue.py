@@ -34,7 +34,7 @@ class Issue(Base):
     latitude = Column(Float, nullable=True, index=True)
     longitude = Column(Float, nullable=True, index=True)
     citizen_category = Column(String(100), nullable=False, index=True)
-    image_path = Column(String(500), nullable=True)
+    image_path = Column(Text, nullable=True)
 
     # AI-powered triage and analysis
     ai_category = Column(String(100), nullable=True, index=True)

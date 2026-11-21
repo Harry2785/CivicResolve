@@ -32,10 +32,10 @@ class Settings:
     DESCRIPTION: str = "AI-Powered Civic Issue Reporting and Resolution Platform"
     API_PREFIX: str = "/api"
 
-    # Server settings (binds to 0.0.0.0 in cloud/container environments like Render or in production)
+    # Server settings (binds to 0.0.0.0 in production or when PORT is set)
     HOST: str = os.getenv(
         "HOST",
-        "0.0.0.0" if (os.getenv("RENDER") or os.getenv("PORT") or os.getenv("ENVIRONMENT") == "production") else "127.0.0.1"
+        "0.0.0.0" if (os.getenv("PORT") or os.getenv("ENVIRONMENT") == "production") else "127.0.0.1"
     )
     PORT: int = int(os.getenv("PORT", "8000"))
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
@@ -56,14 +56,18 @@ class Settings:
             return Path("/tmp/civicresolve/uploads")
         return BASE_DIR / "uploads"
 
-    # SQLite Database settings (auto-routes to /tmp/civicresolve/civicresolve.db when executing inside Vercel)
+    # Database settings: Supports Neon PostgreSQL and local SQLite fallback
     @property
     def DATABASE_URL(self) -> str:
-        env_url = os.getenv("DATABASE_URL")
+        env_url = (os.getenv("DATABASE_URL") or "").strip()
+        if env_url:
+            # Normalize postgres:// to postgresql:// for SQLAlchemy compatibility (Neon / Vercel format)
+            if env_url.startswith("postgres://"):
+                env_url = "postgresql://" + env_url[len("postgres://"):]
+            return env_url
+
         if self.IS_VERCEL:
-            # If user explicitly configured an external database (e.g. PostgreSQL/MySQL) on Vercel, respect it
-            if env_url and not env_url.startswith("sqlite:///.") and "/var/task" not in env_url and "civicresolve.db" not in env_url:
-                return env_url
+            # Temporary fallback during initial Vercel setup before DATABASE_URL environment variable is set
             tmp_dir = Path("/tmp/civicresolve")
             try:
                 tmp_dir.mkdir(parents=True, exist_ok=True)
@@ -78,9 +82,16 @@ class Settings:
                 except Exception:
                     pass
             return f"sqlite:///{tmp_db.as_posix()}"
-        if env_url:
-            return env_url
+
         return f"sqlite:///{(BASE_DIR / 'civicresolve.db').as_posix()}"
+
+    @property
+    def is_postgres(self) -> bool:
+        return "postgres" in self.DATABASE_URL.lower()
+
+    @property
+    def database_type(self) -> str:
+        return "PostgreSQL (Neon)" if self.is_postgres else "SQLite"
 
     # Gemini AI Configuration
     # Defaults to gemini-2.5-flash as requested, with graceful fallback to gemini-3.8-flash
@@ -139,12 +150,9 @@ class Settings:
     def cors_origins(self) -> List[str]:
         raw_origins = os.getenv(
             "CORS_ORIGINS",
-            "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,https://civicresolve-sqkf.onrender.com"
+            "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000"
         )
-        origins = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
-        if "https://civicresolve-sqkf.onrender.com" not in origins:
-            origins.append("https://civicresolve-sqkf.onrender.com")
-        return origins
+        return [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
 
 
 settings = Settings()

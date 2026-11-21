@@ -1,7 +1,11 @@
 import io
+import os
 import uuid
+import base64
+import logging
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, Optional
+import httpx
 from fastapi import HTTPException, UploadFile, status
 from PIL import Image, UnidentifiedImageError
 
@@ -10,6 +14,38 @@ from app.core.constants import (
     ALLOWED_IMAGE_MIME_TYPES,
     ALLOWED_IMAGE_FORMATS
 )
+from app.core.config import settings
+
+logger = logging.getLogger("civicresolve.storage")
+
+
+def _upload_to_vercel_blob(image_bytes: bytes, filename: str, mime_type: str) -> Optional[str]:
+    """
+    Upload image to Vercel Blob persistent object storage if configured.
+    Reads BLOB_READ_WRITE_TOKEN from environment.
+    """
+    token = os.getenv("BLOB_READ_WRITE_TOKEN")
+    if not token:
+        return None
+    try:
+        url = f"https://blob.vercel-storage.com/{filename}"
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "x-api-version": "7",
+            "content-type": mime_type,
+            "x-add-random-suffix": "1"
+        }
+        resp = httpx.put(url, content=image_bytes, headers=headers, timeout=10.0)
+        if resp.status_code in (200, 201):
+            data = resp.json()
+            public_url = data.get("url")
+            if public_url:
+                logger.info(f"Image successfully uploaded to Vercel Blob storage: {public_url}")
+                return public_url
+        logger.warning(f"Vercel Blob upload returned status {resp.status_code}: {resp.text}")
+    except Exception as e:
+        logger.warning(f"Failed to upload to Vercel Blob: {e}")
+    return None
 
 
 def validate_and_save_image(
@@ -102,15 +138,29 @@ def validate_and_save_image(
 
     # 5. Unique, non-executable filename generation
     unique_filename = f"{uuid.uuid4().hex}{safe_ext}"
+
+    # Safe local write (guarantees local copy is saved if directory is writable)
     try:
         destination_dir.mkdir(parents=True, exist_ok=True)
+        destination_path = destination_dir / unique_filename
+        with open(destination_path, "wb") as f:
+            f.write(image_bytes)
     except OSError:
         pass
-    destination_path = destination_dir / unique_filename
 
-    # Save validated bytes to destination
-    with open(destination_path, "wb") as f:
-        f.write(image_bytes)
+    # 6. Persistent object storage resolution for serverless runtime
+    # A. Vercel Blob Storage (if BLOB_READ_WRITE_TOKEN configured)
+    blob_url = _upload_to_vercel_blob(image_bytes, unique_filename, safe_mime)
+    if blob_url:
+        return blob_url, safe_mime, image_bytes
 
+    # B. On Vercel serverless functions without external object storage:
+    # Use Data URI format so images persist permanently in PostgreSQL without ephemeral /tmp loss
+    if settings.IS_VERCEL or os.getenv("USE_DATA_URL_STORAGE") == "1":
+        b64_encoded = base64.b64encode(image_bytes).decode("utf-8")
+        persistent_data_url = f"data:{safe_mime};base64,{b64_encoded}"
+        return persistent_data_url, safe_mime, image_bytes
+
+    # C. Default local development URL
     relative_url = f"/uploads/{unique_filename}"
     return relative_url, safe_mime, image_bytes
