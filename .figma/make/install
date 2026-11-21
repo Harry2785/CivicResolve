@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+npm ci --prefix frontend
+
+python -m venv .figma/make/venv
+.figma/make/venv/bin/python -m pip install --disable-pip-version-check -r requirements.txt
