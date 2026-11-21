@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getApiUrl } from '../config/api'
 import {
   PlusCircle,
   Search,
@@ -23,8 +24,8 @@ export default function CitizenHome({ setCurrentView, setSelectedCategory }) {
     async function loadData() {
       try {
         const [statsRes, issuesRes] = await Promise.all([
-          fetch('/api/issues/pulse'),
-          fetch('/api/issues/feed?limit=4')
+          fetch(getApiUrl('/api/issues/pulse')),
+          fetch(getApiUrl('/api/issues/feed?limit=4'))
         ])
 
         if (statsRes.ok) {

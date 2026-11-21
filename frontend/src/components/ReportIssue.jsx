@@ -16,6 +16,7 @@ import {
   MapPin
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { getApiUrl } from '../config/api'
 
 export default function ReportIssue({ initialCategory = 'Roads & Potholes', setCurrentView, setTrackTrackingId, onOpenAuth }) {
   const { user, getAuthHeaders } = useAuth()
@@ -138,7 +139,7 @@ export default function ReportIssue({ initialCategory = 'Roads & Potholes', setC
         if (longitude !== null) formData.append('longitude', longitude)
         formData.append('image', selectedFile)
 
-        res = await fetch('/api/issues/upload', {
+        res = await fetch(getApiUrl('/api/issues/upload'), {
           method: 'POST',
           headers: {
             ...authHeaders
@@ -147,7 +148,7 @@ export default function ReportIssue({ initialCategory = 'Roads & Potholes', setC
         })
       } else {
         // Send as JSON with verified Authorization header
-        res = await fetch('/api/issues', {
+        res = await fetch(getApiUrl('/api/issues'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

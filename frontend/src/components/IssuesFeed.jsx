@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getApiUrl } from '../config/api'
 import {
   Search,
   Filter,
@@ -36,7 +37,7 @@ export default function IssuesFeed({ setCurrentView }) {
       if (categoryFilter) params.append('category', categoryFilter)
       if (search.trim()) params.append('search', search.trim())
 
-      const res = await fetch(`/api/issues/feed?${params.toString()}`)
+      const res = await fetch(getApiUrl(`/api/issues/feed?${params.toString()}`))
       if (res.ok) {
         const data = await res.json()
         setIssues(data.issues || [])

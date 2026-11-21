@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { getApiUrl } from '../config/api'
 import {
   Building2,
   TrendingUp,
@@ -97,8 +98,8 @@ export default function DepartmentAnalytics({ getAuthHeaders }) {
       const trendsParams = new URLSearchParams({ days: trendDays })
 
       const [deptRes, trendRes] = await Promise.all([
-        fetch(`/api/analytics/departments?${deptParams.toString()}`, { headers }),
-        fetch(`/api/analytics/trends?${trendsParams.toString()}`, { headers })
+        fetch(getApiUrl(`/api/analytics/departments?${deptParams.toString()}`), { headers }),
+        fetch(getApiUrl(`/api/analytics/trends?${trendsParams.toString()}`), { headers })
       ])
 
       if (deptRes.status === 401 || deptRes.status === 403 || trendRes.status === 401 || trendRes.status === 403) {

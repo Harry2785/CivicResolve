@@ -32,6 +32,7 @@ import {
   Flame
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { getApiUrl } from '../config/api'
 import DepartmentAnalytics from './DepartmentAnalytics'
 import HotspotIntelligence from './HotspotIntelligence'
 
@@ -89,8 +90,8 @@ export default function AdminPortal({ setCurrentView }) {
     try {
       const headers = await getAuthHeaders()
       const [issuesRes, statsRes] = await Promise.all([
-        fetch('/api/admin/issues?limit=200', { headers }),
-        fetch('/api/admin/stats', { headers })
+        fetch(getApiUrl('/api/admin/issues?limit=200'), { headers }),
+        fetch(getApiUrl('/api/admin/stats'), { headers })
       ])
 
       if (issuesRes.status === 401 || issuesRes.status === 403 || statsRes.status === 401 || statsRes.status === 403) {
@@ -156,7 +157,7 @@ export default function AdminPortal({ setCurrentView }) {
     setActionLoading(id)
     try {
       const headers = await getAuthHeaders()
-      const res = await fetch(`/api/admin/issues/${id}`, {
+      const res = await fetch(getApiUrl(`/api/admin/issues/${id}`), {
         method: 'PATCH',
         headers: {
           ...headers,
@@ -179,7 +180,7 @@ export default function AdminPortal({ setCurrentView }) {
         setEditingId(null)
         showToast(`Complaint ${updated.tracking_id} successfully updated!`)
         // Refresh dashboard stats in background
-        const statsRes = await fetch('/api/admin/stats', { headers })
+        const statsRes = await fetch(getApiUrl('/api/admin/stats'), { headers })
         if (statsRes.ok) setStats(await statsRes.json())
       } else {
         const err = await res.json().catch(() => ({}))
@@ -201,7 +202,7 @@ export default function AdminPortal({ setCurrentView }) {
     setActionLoading(id)
     try {
       const headers = await getAuthHeaders()
-      const res = await fetch(`/api/admin/issues/${id}`, {
+      const res = await fetch(getApiUrl(`/api/admin/issues/${id}`), {
         method: 'DELETE',
         headers
       })
@@ -214,7 +215,7 @@ export default function AdminPortal({ setCurrentView }) {
         setDeleteConfirmIssue(null)
         showToast(`Complaint ${tracking_id} permanently removed.`, 'info')
         // Refresh stats
-        const statsRes = await fetch('/api/admin/stats', { headers })
+        const statsRes = await fetch(getApiUrl('/api/admin/stats'), { headers })
         if (statsRes.ok) setStats(await statsRes.json())
       } else {
         const err = await res.json().catch(() => ({}))
@@ -234,7 +235,7 @@ export default function AdminPortal({ setCurrentView }) {
     setActionLoading(id)
     try {
       const headers = await getAuthHeaders()
-      const res = await fetch(`/api/admin/issues/${id}/reanalyze`, {
+      const res = await fetch(getApiUrl(`/api/admin/issues/${id}/reanalyze`), {
         method: 'POST',
         headers
       })
@@ -715,7 +716,7 @@ export default function AdminPortal({ setCurrentView }) {
                           <div
                             onClick={(e) => {
                               e.stopPropagation()
-                              setImageLightboxUrl(issue.image_path)
+                              setImageLightboxUrl(getApiUrl(issue.image_path))
                             }}
                             className="photo-indicator-pill"
                             title="Evidence photo attached (click to view)"
@@ -1030,12 +1031,12 @@ export default function AdminPortal({ setCurrentView }) {
                   <div className="drawer-evidence-image-wrap">
                     <span className="meta-item-lbl">Attached Photo Evidence:</span>
                     <div
-                      onClick={() => setImageLightboxUrl(selectedIssue.image_path)}
+                      onClick={() => setImageLightboxUrl(getApiUrl(selectedIssue.image_path))}
                       className="evidence-photo-box"
                       title="Click to zoom image"
                     >
                       <img
-                        src={selectedIssue.image_path}
+                        src={getApiUrl(selectedIssue.image_path)}
                         alt="Citizen uploaded evidence"
                         className="evidence-photo-img"
                       />

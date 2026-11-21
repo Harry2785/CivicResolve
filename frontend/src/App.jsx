@@ -12,6 +12,7 @@ import SystemDiagnostics from './components/SystemDiagnostics'
 import AuthModal from './components/AuthModal'
 import { useAuth } from './context/AuthContext'
 import { Loader2 } from 'lucide-react'
+import { getApiUrl } from './config/api'
 import './App.css'
 
 export default function App() {
@@ -61,7 +62,7 @@ export default function App() {
   useEffect(() => {
     const checkHealth = async () => {
       try {
-        const res = await fetch('/api/health')
+        const res = await fetch(getApiUrl('/api/health'))
         setIsHealthy(res.ok)
       } catch {
         setIsHealthy(false)

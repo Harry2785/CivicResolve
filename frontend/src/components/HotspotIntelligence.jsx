@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { getApiUrl } from '../config/api'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import {
@@ -75,7 +76,7 @@ export default function HotspotIntelligence({ getAuthHeaders, onInspectComplaint
       if (priorityFilter) params.append('priority', priorityFilter)
       if (departmentFilter) params.append('department', departmentFilter)
 
-      const res = await fetch(`/api/analytics/hotspots?${params.toString()}`, { headers })
+      const res = await fetch(getApiUrl(`/api/analytics/hotspots?${params.toString()}`), { headers })
 
       if (res.status === 401 || res.status === 403) {
         setError('Administrator authorization required to view geographic hotspot intelligence.')

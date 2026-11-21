@@ -7,6 +7,7 @@ import {
   RecaptchaVerifier
 } from 'firebase/auth'
 import { auth, googleProvider, isFirebaseConfigured } from '../firebase/config'
+import { getApiUrl } from '../config/api'
 
 const AuthContext = createContext(null)
 
@@ -90,7 +91,7 @@ export function AuthProvider({ children }) {
         return { isAuthorized: false, error: 'No token available' }
       }
 
-      const res = await fetch('/api/admin/verify', {
+      const res = await fetch(getApiUrl('/api/admin/verify'), {
         headers: {
           Authorization: `Bearer ${token}`
         }

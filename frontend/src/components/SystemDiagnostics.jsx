@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getApiUrl } from '../config/api'
 import {
   Globe,
   Server,
@@ -20,7 +21,7 @@ export default function SystemDiagnostics() {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch('/api/health')
+      const response = await fetch(getApiUrl('/api/health'))
       if (!response.ok) {
         throw new Error(`Server returned HTTP ${response.status}`)
       }

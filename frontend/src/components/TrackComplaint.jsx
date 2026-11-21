@@ -19,6 +19,7 @@ import {
   ExternalLink
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { getApiUrl } from '../config/api'
 
 export default function TrackComplaint({
   initialTrackingId = '',
@@ -44,7 +45,7 @@ export default function TrackComplaint({
     setMyError(null)
     try {
       const headers = await getAuthHeaders()
-      const res = await fetch('/api/issues/my', { headers })
+      const res = await fetch(getApiUrl('/api/issues/my'), { headers })
       if (res.ok) {
         const data = await res.json()
         setMyComplaints(data.issues || [])
@@ -77,7 +78,7 @@ export default function TrackComplaint({
 
     try {
       const headers = await getAuthHeaders()
-      const res = await fetch(`/api/issues/${encodeURIComponent(query)}`, { headers })
+      const res = await fetch(getApiUrl(`/api/issues/${encodeURIComponent(query)}`), { headers })
       if (!res.ok) {
         if (res.status === 404) {
           throw new Error(
@@ -292,7 +293,7 @@ export default function TrackComplaint({
             {issue.image_path && (
               <div className="evidence-box">
                 <h4 className="track-section-label">Photo Evidence</h4>
-                <img src={issue.image_path} alt="Evidence" className="evidence-image" />
+                <img src={getApiUrl(issue.image_path)} alt="Evidence" className="evidence-image" />
               </div>
             )}
           </div>

@@ -26,12 +26,25 @@ class Settings:
     HOST: str = os.getenv("HOST", "127.0.0.1")
     PORT: int = int(os.getenv("PORT", "8000"))
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
+    IS_VERCEL: bool = os.getenv("VERCEL") == "1" or os.getenv("AWS_LAMBDA_FUNCTION_NAME") is not None
 
-    # SQLite Database settings
-    DATABASE_URL: str = os.getenv(
-        "DATABASE_URL",
-        f"sqlite:///{BASE_DIR / 'civicresolve.db'}"
-    )
+    # SQLite Database settings (auto-routes to /tmp when executing inside Vercel serverless runtime)
+    @property
+    def DATABASE_URL(self) -> str:
+        env_url = os.getenv("DATABASE_URL")
+        if env_url:
+            return env_url
+        if self.IS_VERCEL:
+            tmp_db = Path("/tmp/civicresolve.db")
+            source_db = BASE_DIR / "civicresolve.db"
+            if not tmp_db.exists() and source_db.exists():
+                import shutil
+                try:
+                    shutil.copy2(source_db, tmp_db)
+                except Exception:
+                    pass
+            return f"sqlite:///{tmp_db}"
+        return f"sqlite:///{BASE_DIR / 'civicresolve.db'}"
 
     # Gemini AI Configuration
     # Defaults to gemini-2.5-flash as requested, with graceful fallback to gemini-3.8-flash
@@ -39,8 +52,12 @@ class Settings:
     GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
     FALLBACK_GEMINI_MODEL: str = os.getenv("FALLBACK_GEMINI_MODEL", "gemini-3.8-flash")
 
-    # Media & Uploads directory
-    UPLOAD_DIR: Path = BASE_DIR / "uploads"
+    # Media & Uploads directory (auto-routes to /tmp/uploads on Vercel serverless)
+    @property
+    def UPLOAD_DIR(self) -> Path:
+        if self.IS_VERCEL:
+            return Path("/tmp/uploads")
+        return BASE_DIR / "uploads"
 
     # Administrator Authentication & Allowlist
     ADMIN_EMAILS_RAW: str = os.getenv(
@@ -101,4 +118,7 @@ class Settings:
 settings = Settings()
 
 # Ensure uploads directory exists
-settings.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+try:
+    settings.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+except OSError:
+    pass
